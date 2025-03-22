@@ -1,0 +1,50 @@
+/*
+Theme Name: Orchid Store Child
+Template: orchid-store
+Author: Nguyen Thanh Danh
+Version: 1.0
+*/
+
+/* Custom CSS có thể thêm ở đây */
+
+/* Header & Nav */
+a:hover{
+  text-decoration-line: none !important;
+}
+
+.site-title a {
+  color: #795548 !important;
+}
+
+.site-title a:hover {
+  text-decoration-line: none;
+}
+
+/* Welcome Message Styling */
+.welcome-message p {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  padding: 15px;
+  background: #795548;
+  color: white;
+  border-radius: 5px;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Custom product image size */
+.wc-block-grid__products .wc-block-grid__product-image img{
+  height: 280px !important;
+}
+
+/* Custom size logo image */
+.custom-logo{
+  width: 70px !important;
+}
+
+/* Custom button woocommerce */
+.wc-block-components-button:not(.is-link){
+  background-color:#795548;
+  color: #f9f9f9;
+}
