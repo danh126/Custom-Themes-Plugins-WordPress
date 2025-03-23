@@ -26,17 +26,19 @@ define('CPM_PLUGIN_URL', plugin_dir_url(__FILE__));
 // require_once CPM_PLUGIN_DIR . 'inc/functions.php';
 
 /**
- * Nhúng CDN vào Plugin
+ * Thêm cac file tài nguyên vào trong plugin
  */
-function cpm_enqueue_cdn()
+function cpm_enqueue_assets()
 {
-    // Bootstrap CSS 
+    // CDN Bootstrap CSS & JS 
     wp_enqueue_style('bootstrap-css', 'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css', array(), '5.3.3');
-
-    // Bootstrap JS
     wp_enqueue_script('bootstrap-js', 'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js', array('jquery'), '5.3.3', true);
+
+    // Load CSS & JS
+    wp_enqueue_style('cpm-css', CPM_PLUGIN_URL . 'assets/css/style.css');
+    wp_enqueue_script('cpm-js', CPM_PLUGIN_URL . 'assets/js/main.js', array('jquery'), null, true);
 }
-add_action('admin_enqueue_scripts', 'cpm_enqueue_cdn'); // Load trên admin dashboard
+add_action('admin_enqueue_scripts', 'cpm_enqueue_assets'); // Load trên admin dashboard
 
 /**
  * Kích hoạt plugin & tạo table custom products
@@ -138,9 +140,72 @@ function cpm_delete_data_field()
 }
 
 /**
- * Xử lý các tác vụ
+ * Xử lý các tác vụ sản phẩm
  */
-function cpm_handle_actions()
+function cpm_handle_products_actions()
+{
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'custom_products';
+
+    $cpm_admin_url = admin_url('admin.php?page=cpm-product-list');
+
+    // Thêm sản phẩm
+    if (isset($_POST['submit_add_product'])) {
+        // Check bảo mật
+        if (!isset($_POST['cpm_add_product_nonce']) || !wp_verify_nonce($_POST['cpm_add_product_nonce'], 'cpm_add_product_nonce_action')) {
+            wp_die('Lỗi bảo mật!');
+        }
+
+        $name = sanitize_text_field($_POST['name']);
+        $price = floatval($_POST['price']);
+
+        $wpdb->insert($table_name, [
+            'name' => $name,
+            'price' => $price
+        ]);
+
+        wp_redirect(add_query_arg('add_product', 'true', $cpm_admin_url));
+        exit;
+    }
+
+    // Cập nhật sản phẩm
+    if (isset($_POST['submit_edit_product'])) {
+        // Check bảo mật
+        if (!isset($_POST['cpm_edit_product_nonce']) || !wp_verify_nonce($_POST['cpm_edit_product_nonce'], 'cpm_edit_product_nonce_action')) {
+            wp_die('Lỗi bảo mật!');
+        }
+
+        $id = intval($_POST['id']);
+        $name = sanitize_text_field($_POST['name']);
+        $price = floatval($_POST['price']);
+
+        $wpdb->update(
+            $table_name,
+            [
+                'name' => $name,
+                'price' => $price
+            ],
+            ['id' => $id]
+        );
+
+        wp_redirect(add_query_arg('edit_product', 'true', $cpm_admin_url));
+        exit;
+    }
+
+    // Xóa sản phẩm
+    if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+        $wpdb->delete($table_name, ['id' => $_GET['id']]);
+
+        wp_redirect(add_query_arg('delete_product', 'true', $cpm_admin_url));
+        exit;
+    }
+}
+add_action('admin_init', 'cpm_handle_products_actions');
+
+/**
+ * Xử lý các tác vụ hệ thống
+ */
+function cpm_handle_systems_actions()
 {
     $admin_cpm_settings_url = admin_url('admin.php?page=cpm-settings');
 
@@ -155,4 +220,4 @@ function cpm_handle_actions()
         exit;
     }
 }
-add_action('admin_init', 'cpm_handle_actions');
+add_action('admin_init', 'cpm_handle_systems_actions');
