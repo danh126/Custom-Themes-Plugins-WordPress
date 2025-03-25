@@ -16,7 +16,7 @@ if (isset($_GET['delete_product']) && $_GET['delete_product'] == true) :
 ?>
 
     <!-- Thông báo -->
-    <div class="notice notice-error is-dismissible">
+    <div class="notice notice-success is-dismissible">
         <p><?= __('Xóa sản phẩm thành công!') ?></p>
     </div>
 <?php endif ?>

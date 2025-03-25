@@ -96,16 +96,10 @@ document.addEventListener("DOMContentLoaded", function () {
       let name = row.querySelector(".product-name").textContent;
       let price = row.querySelector(".product-price").textContent;
 
-      // URL cập nhật sản phẩm
-      let url = `admin.php?page=cpm-product-list&action=update&id=${id}`;
-
       // Đổ dữ liệu vào form
       document.getElementById("name").value = name;
       document.getElementById("price").value = price;
       document.getElementById("product-id").value = id;
-
-      // Cập nhật action form
-      updateForm.action = url;
 
       // Hiển thị form cập nhật
       updateForm.classList.toggle("hidden");

@@ -22,9 +22,6 @@ if (!defined('ABSPATH')) {
 define('CPM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CPM_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Nạp các file cấu hình cần thiết
-// require_once CPM_PLUGIN_DIR . 'inc/functions.php';
-
 /**
  * Thêm cac file tài nguyên vào trong plugin
  */
@@ -73,8 +70,14 @@ function cpm_activate()
 register_deactivation_hook(__FILE__, 'cpm_deactivate');
 function cpm_deactivate()
 {
+    // Xóa option
     delete_option('cpm_delete_data_on_uninstall');
 }
+
+/**
+ * Nạp các file cấu hình cần thiết
+ */
+require_once CPM_PLUGIN_DIR . 'inc/rest-api-controller.php';
 
 /**
  * Thêm vào menu admin
