@@ -3,6 +3,10 @@
 /**
  * Ngăn chặn truy cập trực tiếp
  */
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -25,6 +29,8 @@ class CPM_REST_Controller extends WP_REST_Controller
 
         $this->namespace = 'cpm/v1';
         $this->resource_name = 'products';
+
+        add_filter('jwt_auth_expire', [$this, 'custom_jwt_expiration']); // Set thời gian hết hạn Token
     }
 
     /**
@@ -63,6 +69,12 @@ class CPM_REST_Controller extends WP_REST_Controller
             'callback' => [$this, 'delete_product'],
             'permission_callback' => '__return_true'
         ]);
+
+        register_rest_route($this->namespace, '/check-token', [
+            'methods'  => 'GET',
+            'callback' => [$this, 'check_token'],
+            'permission_callback' => '__return_true'
+        ]);
     }
 
     /**
@@ -70,13 +82,19 @@ class CPM_REST_Controller extends WP_REST_Controller
      */
     public function get_products(WP_REST_Request $request)
     {
+        // Xác thực Token
+        $user = $this->check_token();
+        if (is_wp_error($user)) {
+            return $user;
+        }
+
         $products = $this->wpdb->get_results("SELECT * FROM {$this->table}");
 
         if (empty($products)) {
             return new WP_Error('no_products', __('Không có sản phẩm nào'), ['status' => 404]);
         }
 
-        return rest_ensure_response($products);
+        return rest_ensure_response(['user' => $user, 'data' => $products]);
     }
 
     /**
@@ -264,5 +282,92 @@ class CPM_REST_Controller extends WP_REST_Controller
         if (empty($product)) {
             return new WP_Error('no_product', __("Không tồn tại sản phẩm có id là $id"), ['status' => 404]);
         }
+    }
+
+    /**
+     * Xác thực Token (JWT)
+     */
+
+    // API để test token
+    public function check_token()
+    {
+        $token = $this->get_token_from_request();
+
+        if (!$token) {
+            return new WP_Error('no_token', 'Không có token', ['status' => 401]);
+        }
+
+        if (!$this->check_token_via_api($token)) {
+            return new WP_Error('invalid_token', 'Token không hợp lệ', ['status' => 403]);
+        }
+
+        // Nếu token hợp lệ, lấy thông tin user
+        $decoded = $this->decode_token_manually($token);
+        $user = get_user_by('ID', $decoded->data->user->id);
+
+        return [
+            'message' => 'Token hợp lệ!',
+            'user'    => $user->user_login,
+            'email'   => $user->user_email
+        ];
+    }
+
+    //Gọi API `/jwt-auth/v1/token/validate` để xác thực token
+    private function check_token_via_api($token)
+    {
+        $url = home_url('/wp-json/jwt-auth/v1/token/validate');
+
+        // wp_remote_post() -> gửi yêu cầu post kèm param đến url
+        $response = wp_remote_post($url, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $token
+            ]
+        ]);
+
+        if (is_wp_error($response)) {
+            error_log("Lỗi API Validate: " . $response->get_error_message());
+            return false;
+        }
+
+        // wp_remote_retrieve_body($response) lấy nội dung JSON từ API phản hồi
+        // json_decode() chuyển đổi JSON thành một object PHP
+        $body = json_decode(wp_remote_retrieve_body($response));
+
+        if (isset($body->code) && $body->code === 'jwt_auth_valid_token') {
+            return true;
+        }
+
+        error_log("Token không hợp lệ từ API.");
+        return false;
+    }
+
+    //  Lấy token từ header Authorization
+    private function get_token_from_request()
+    {
+        $headers = getallheaders();
+        if (!empty($headers['Authorization'])) {
+            return str_replace('Bearer ', '', $headers['Authorization']);
+        }
+        return null;
+    }
+
+    // Giải mã Token
+    private function decode_token_manually($token)
+    {
+        $secret_key = defined('JWT_AUTH_SECRET_KEY') ? JWT_AUTH_SECRET_KEY : null;
+
+        try {
+            $decoded = JWT::decode($token, new Key($secret_key, 'HS256'));
+            return $decoded;
+        } catch (Exception $e) {
+            error_log("Lỗi khi decode token: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    // Set thời gian hết hạn Token
+    private function custom_jwt_expiration()
+    {
+        return time() + 3600; // Token hết hạn sau 1 giờ (3600 giây)
     }
 }
